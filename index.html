@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Monitoring Suhu IoT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+        }
+        
+        .dashboard-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .temperature-indicator {
+            width: 80%;
+            height: 12px;
+            border-radius: 6px;
+            background: linear-gradient(to right, #3b82f6, #10b981, #ef4444);
+            margin: 20px auto;
+        }
+        
+        .temperature-pointer {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: white;
+            border: 3px solid #1e40af;
+            position: relative;
+            top: -14px;
+            left: 0%;
+            transition: left 1s ease;
+        }
+        
+        .chart-container {
+            height: 250px;
+        }
+        
+        .alert-indicator {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/e7ae1d64-07c4-4b05-ac5b-ddc0c17c0c3e.png" alt="Header ilustrasi IoT dengan sensor suhu pada latar belakang biru teknologi" class="mx-auto mb-4 rounded-lg" />
+            <h1 class="text-3xl font-bold text-gray-800">Sistem Monitoring Suhu IoT</h1>
+            <p class="text-lg text-gray-600 mt-2">Web Monitoring Suhu Realtime</p>
+        </header>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Sensor Card -->
+            <div class="dashboard-card bg-white rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Sensor Suhu</h2>
+                    <span class="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">Online</span>
+                </div>
+                
+                <div class="text-center mb-6">
+                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/4ba1ef66-a4c0-49bc-980b-055d0b771d8d.png" alt="Ilustrasi sensor suhu elektronik berwarna biru dengan tampilan digital" class="mx-auto" />
+                </div>
+                
+                <div class="temperature-indicator">
+                    <div class="temperature-pointer" id="temperaturePointer"></div>
+                </div>
+                
+                <div class="text-center mt-6">
+                    <div class="text-5xl font-bold text-gray-800 mb-2">
+                        <span id="currentTemperature">0</span>
+                        <span class="text-xl">°C</span>
+                    </div>
+                    <div id="temperatureStatus" class="text-lg font-medium">
+                        <span class="text-gray-600">Normal</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Data Visualization -->
+            <div class="dashboard-card bg-white rounded-xl p-6 md:col-span-2">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Histori Suhu</h2>
+                <div class="chart-container">
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+                
+                <div class="mt-6 grid grid-cols-3 gap-4">
+                    <div class="bg-gray-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-gray-800" id="minTemperature">0°C</div>
+                        <div class="text-sm text-gray-500">Minimum</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-gray-800" id="avgTemperature">0°C</div>
+                        <div class="text-sm text-gray-500">Rata-rata</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-gray-800" id="maxTemperature">0°C</div>
+                        <div class="text-sm text-gray-500">Maksimum</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Alert Section -->
+            <div class="dashboard-card bg-white rounded-xl p-6 md:col-span-3">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Notifikasi Suhu</h2>
+                <div id="alertContainer" class="space-y-3">
+                    <div class="p-3 rounded-lg alert-indicator bg-red-100 border border-red-300">
+                        <div class="flex items-center">
+                            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/3cbed4da-cab5-4de4-b560-281b98c9e2c0.png" alt="Ikon peringatan suhu tinggi berwarna merah" class="mr-3" />
+                            <div>
+                                <p class="font-medium text-red-800">Suhu mencapai level kritis!</p>
+                                <p class="text-sm text-red-600">Suhu mencapai 40°C pada 14:30 WIB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Device Info -->
+            <div class="dashboard-card bg-white rounded-xl p-6">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Informasi Perangkat</h2>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Nama Perangkat</p>
+                        <p class="font-medium">Sensor Suhu IoT v1.0</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">ID Perangkat</p>
+                        <p class="font-medium">SI-2024-TEMP-001</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Terakhir Update</p>
+                        <p class="font-medium"><span id="lastUpdate">-</span></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Control Panel -->
+            <div class="dashboard-card bg-white rounded-xl p-6">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Kontrol Sensor</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Interval Pembacaan</label>
+                        <select id="intervalSelect" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="1000">1 Detik</option>
+                            <option value="3000" selected>3 Detik</option>
+                            <option value="5000">5 Detik</option>
+                            <option value="10000">10 Detik</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="notifToggle" class="mr-2 h-5 w-5 text-blue-600" checked>
+                        <label for="notifToggle" class="text-sm font-medium text-gray-700">Aktifkan Notifikasi</label>
+                    </div>
+                    <button id="resetBtn" class="w-full py-2 px-4 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md transition">
+                        Reset Data
+                    </button>
+                    <button id="exportBtn" class="w-full py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded-md transition">
+                        Export Data
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Documentation -->
+            <div class="dashboard-card bg-white rounded-xl p-6">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Dokumentasi</h2>
+                <div class="prose">
+                    <p>Sistem ini dirancang untuk:</p>
+                    <ul class="list-disc pl-5">
+                        <li>Monitoring suhu secara real-time</li>
+                        <li>Mencatat histori suhu</li>
+                        <li>Memberikan notifikasi ketika suhu tidak normal</li>
+                    </ul>
+                    <p class="mt-2">Anda dapat mengubah interval pembacaan sensor melalui panel kontrol di samping.</p>
+
+        </div>
+    </div>
+
+    <!-- Audio Elements for Alerts -->
+    <audio id="warningSound" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3" preload="auto"></audio>
+    <audio id="dangerSound" src="https://www.soundjay.com/buttons/sounds/beep-08.mp3" preload="auto"></audio>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Simulasi data sensor suhu
+        class TemperatureSensor {
+            constructor() {
+                this.temperatureHistory = [];
+                this.maxHistoryPoints = 30;
+                this.interval = 3000;
+                this.currentTemperature = 25;
+                this.isRunning = true;
+                this.chart = null;
+                
+                // Inisialisasi data awal
+                this.generateInitialData();
+                
+                // Mulai simulasi perubahan suhu
+                this.simulateTemperature();
+            }
+            
+            generateInitialData() {
+                const now = new Date();
+                for (let i = 30; i > 0; i--) {
+                    const time = new Date(now.getTime() - i * this.interval);
+                    const temp = 25 + Math.sin(i * 0.5) * 5 + Math.random() * 2;
+                    this.temperatureHistory.push({
+                        time: time,
+                        temperature: parseFloat(temp.toFixed(1))
+                    });
+                }
+            }
+            
+            simulateTemperature() {
+                if (!this.isRunning) return;
+                
+                // Update suhu dengan pola periodik + random
+                const baseTemp = 25;
+                const timeFactor = Date.now() / 10000;
+                const variation = Math.sin(timeFactor) * 8 + Math.random() * 3;
+                this.currentTemperature = parseFloat((baseTemp + variation).toFixed(1));
+                
+                // Tambahkan ke histori
+                this.temperatureHistory.push({
+                    time: new Date(),
+                    temperature: this.currentTemperature
+                });
+                
+                // Pertahankan jumlah histori
+                if (this.temperatureHistory.length > this.maxHistoryPoints) {
+                    this.temperatureHistory.shift();
+                }
+                
+                // Update UI
+                this.updateUI();
+                
+                // Jadwalkan update berikutnya
+                setTimeout(() => this.simulateTemperature(), this.interval);
+            }
+            
+            getMinTemperature() {
+                return Math.min(...this.temperatureHistory.map(item => item.temperature));
+            }
+            
+            getMaxTemperature() {
+                return Math.max(...this.temperatureHistory.map(item => item.temperature));
+            }
+            
+            getAvgTemperature() {
+                const sum = this.temperatureHistory.reduce((acc, item) => acc + item.temperature, 0);
+                return sum / this.temperatureHistory.length;
+            }
+            
+            updateUI() {
+                // Update tampilan suhu saat ini
+                document.getElementById('currentTemperature').textContent = this.currentTemperature;
+                
+                // Update indikator suhu
+                const pointer = document.getElementById('temperaturePointer');
+                const pointerPosition = ((this.currentTemperature - 10) / 30) * 100;
+                pointer.style.left = `${Math.min(100, Math.max(0, pointerPosition))}%`;
+                
+                // Update status suhu
+                const statusElement = document.getElementById('temperatureStatus');
+                if (this.currentTemperature > 35) {
+                    statusElement.innerHTML = '<span class="text-red-600">Panas</span>';
+                } else if (this.currentTemperature < 20) {
+                    statusElement.innerHTML = '<span class="text-blue-600">Dingin</span>';
+                } else {
+                    statusElement.innerHTML = '<span class="text-green-600">Normal</span>';
+                }
+                
+                // Update statistik
+                document.getElementById('minTemperature').textContent = this.getMinTemperature().toFixed(1) + '°C';
+                document.getElementById('maxTemperature').textContent = this.getMaxTemperature().toFixed(1) + '°C';
+                document.getElementById('avgTemperature').textContent = this.getAvgTemperature().toFixed(1) + '°C';
+                
+                // Update waktu terakhir
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                
+                // Update chart
+                this.updateChart();
+                
+                // Cek notifikasi
+                if (this.currentTemperature > 38 || this.currentTemperature < 15) {
+                    this.showTemperatureAlert();
+                }
+            }
+            
+            updateChart() {
+                const ctx = document.getElementById('temperatureChart').getContext('2d');
+                
+                // Buat chart jika belum ada
+                if (!this.chart) {
+                    this.chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: this.temperatureHistory.map(item => item.time.toLocaleTimeString()),
+                            datasets: [{
+                                label: 'Suhu (°C)',
+                                data: this.temperatureHistory.map(item => item.temperature),
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                borderColor: 'rgba(59, 130, 246, 0.8)',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    min: Math.floor(this.getMinTemperature() - 5),
+                                    max: Math.ceil(this.getMaxTemperature() + 5),
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // Update data chart
+                    this.chart.data.labels = this.temperatureHistory.map(item => item.time.toLocaleTimeString());
+                    this.chart.data.datasets[0].data = this.temperatureHistory.map(item => item.temperature);
+                    this.chart.update();
+                }
+            }
+            
+            showTemperatureAlert() {
+                const notificationEnabled = document.getElementById('notifToggle').checked;
+                if (!notificationEnabled) return;
+                
+                // Play appropriate sound
+                if (this.currentTemperature > 38) {
+                    document.getElementById('dangerSound').play();
+                } else if (this.currentTemperature < 15) {
+                    document.getElementById('warningSound').play();
+                }
+                
+                // Show browser notification if supported
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification(`Peringatan Suhu ${this.currentTemperature}°C`, {
+                        body: `Suhu mencapai level ${this.currentTemperature > 38 ? 'Panas Ekstrem' : 'Dingin Ekstrem'}!`,
+                        icon: 'https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/219cd52a-bfbd-49df-9490-c461879c240c.png'
+                    });
+                }
+                
+                const alertContainer = document.getElementById('alertContainer');
+                const alertType = this.currentTemperature > 38 ? 'Panas Ekstrem' : 'Dingin Ekstrem';
+                const alertColor = this.currentTemperature > 38 ? 'red' : 'blue';
+                
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `p-3 rounded-lg alert-indicator bg-${alertColor}-100 border border-${alertColor}-300`;
+                alertDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="mr-3 text-2xl">
+                            ${this.currentTemperature > 38 ? '🔥' : '❄️'}
+                        </div>
+                        <div>
+                            <p class="font-bold text-${alertColor}-800">⚠️ Suhu ${this.currentTemperature}°C (${alertType})!</p>
+                            <p class="text-sm text-${alertColor}-600">Suhu mencapai ${this.currentTemperature}°C pada ${new Date().toLocaleTimeString()}</p>
+                        </div>
+                    </div>
+                `;
+                
+                alertContainer.prepend(alertDiv);
+                
+                // Hapus notifikasi setelah 10 detik
+                setTimeout(() => {
+                    alertDiv.classList.remove('alert-indicator');
+                    setTimeout(() => alertDiv.remove(), 300);
+                }, 10000);
+            }
+            
+            resetData() {
+                this.temperatureHistory = [];
+                this.generateInitialData();
+                document.getElementById('alertContainer').innerHTML = '';
+            }
+            
+            exportData() {
+                const csvContent = "Waktu,Suhu (C)\n" + 
+                    this.temperatureHistory.map(item => 
+                        `${item.time.toLocaleString()},${item.temperature}`
+                    ).join("\n");
+                
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `suhu_data_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            
+            changeInterval(newInterval) {
+                this.interval = parseInt(newInterval);
+                if (!this.isRunning) {
+                    this.isRunning = true;
+                    this.simulateTemperature();
+                }
+            }
+        }
+        
+        // Request notification permission
+        if ('Notification' in window) {
+            Notification.requestPermission().then(permission => {
+                console.log('Notification permission:', permission);
+            });
+        }
+        
+        // Initialize sensor
+        const sensor = new TemperatureSensor();
+        
+        // Event listeners
+        document.getElementById('intervalSelect').addEventListener('change', function() {
+            sensor.changeInterval(this.value);
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            sensor.resetData();
+        });
+        
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            sensor.exportData();
+        });
+    </script>
+</body>
+</html>
